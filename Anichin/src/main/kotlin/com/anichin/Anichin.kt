@@ -4,6 +4,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.nicehttp.NiceResponse
 import org.jsoup.nodes.Element
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
 class Anichin : MainAPI() {
     override var mainUrl = "https://anichin.club"
