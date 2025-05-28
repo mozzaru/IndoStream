@@ -3,84 +3,205 @@ package com.anichin
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.nicehttp.NiceResponse
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
 class Anichin : MainAPI() {
     override var mainUrl = "https://anichin.club"
     override var name = "Anichin"
-    override val hasMainPage = true
-    override var lang = "id"
-    override val hasDownloadSupport = true
-    override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie, TvType.OVA, TvType.Donghua)
 
-    override val mainPage = mainPageOf(
-        "$mainUrl/page/" to "Terbaru"
-    )
+    private val favorites = mutableListOf<Media>() // Daftar favorit
 
-    private suspend fun request(url: String): NiceResponse {
-        return app.get(url)
-    }
+    override suspend fun fetchPopular(page: Int): List<Media> {
+        return try {
+            val response = app.get("$mainUrl/popular?page=$page")
+            val document = response.document
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val doc = request("${request.data}$page").document
-        val home = doc.select("article").map { it.toSearchResult() }
-        return newHomePageResponse(request.name, home)
-    }
+            document.select("div.donghua-item").map { element ->
+                val title = element.select("h3.title").text().trim()
+                val link = element.select("a").attr("href")
+                val imageUrl = element.select("img").attr("src")
 
-    private fun Element.toSearchResult(): AnimeSearchResponse {
-        val href = fixUrl(this.select("a").attr("href"))
-        val title = this.select("h2").text()
-        val poster = fixUrl(this.select("img").attr("src"))
-        return newAnimeSearchResponse(title, href, TvType.Anime) {
-            posterUrl = poster
-        }
-    }
-
-    override suspend fun search(query: String): List<SearchResponse> {
-        val doc = request("$mainUrl/?s=$query").document
-        return doc.select("article").map { it.toSearchResult() }
-    }
-
-    override suspend fun load(url: String): LoadResponse {
-        val doc = request(url).document
-        val title = doc.selectFirst("h1")?.text()
-            ?.replace("Subtitle Indonesia", "")?.trim() ?: ""
-        val poster = doc.selectFirst("img.alignnone")?.attr("src")
-            ?: doc.selectFirst("figure img")?.attr("src")
-        val description = doc.selectFirst(".entry-content > p")?.text()
-            ?: doc.select(".entry-content").text()
-
-        val episodes = doc.select("div.eplister ul li").mapNotNull {
-            val link = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
-            val name = it.selectFirst(".epl-title")?.text() ?: it.text()
-            val epNum = Regex("Episode\\s?(\\d+)").find(name)
-                ?.groupValues?.getOrNull(1)?.toIntOrNull()
-
-            newEpisode(link) {
-                this.name = name
-                this.episode = epNum
+                Media(
+                    title = title,
+                    link = link,
+                    imageUrl = imageUrl,
+                    type = MediaType.Anime
+                )
             }
-        }.reversed()
-
-        return newAnimeLoadResponse(title, url, TvType.Anime) {
-            this.posterUrl = poster
-            this.plot = description
-            addEpisodes(DubStatus.Subbed, episodes)
+        } catch (e: Exception) {
+            emptyList() // Mengembalikan daftar kosong jika terjadi kesalahan
         }
     }
 
-    override suspend fun loadLinks(
-        data: String,
-        isCasting: Boolean,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
-    ): Boolean {
-        val doc = request(data).document
-        doc.select("iframe").forEach { iframe ->
-            val iframeUrl = iframe.attr("src")
-            loadExtractor(iframeUrl, data, subtitleCallback, callback)
+    // Tambahan: Mengambil daftar genre
+    suspend fun fetchGenres(): List<String> {
+        return try {
+            val response = app.get("$mainUrl/genres")
+            val document = response.document
+
+            document.select("div.genre-item a").map { it.text().trim() }
+        } catch (e: Exception) {
+            emptyList() // Mengembalikan daftar kosong jika terjadi kesalahan
         }
-        return true
+    }
+
+    // Tambahan: Mengambil update terbaru
+    suspend fun fetchLatestUpdates(page: Int): List<Media> {
+        return try {
+            val response = app.get("$mainUrl/latest?page=$page")
+            val document = response.document
+
+            document.select("div.donghua-item").map { element ->
+                val title = element.select("h3.title").text().trim()
+                val link = element.select("a").attr("href")
+                val imageUrl = element.select("img").attr("src")
+
+                Media(
+                    title = title,
+                    link = link,
+                    imageUrl = imageUrl,
+                    type = MediaType.Anime
+                )
+            }
+        } catch (e: Exception) {
+            emptyList() // Mengembalikan daftar kosong jika terjadi kesalahan
+        }
+    }
+
+    // Tambahan: Mengambil donghua yang sudah lengkap
+    suspend fun fetchCompletedDonghua(page: Int): List<Media> {
+        return try {
+            val response = app.get("$mainUrl/completed?page=$page")
+            val document = response.document
+
+            document.select("div.donghua-item").map { element ->
+                val title = element.select("h3.title").text().trim()
+                val link = element.select("a").attr("href")
+                val imageUrl = element.select("img").attr("src")
+
+                Media(
+                    title = title,
+                    link = link,
+                    imageUrl = imageUrl,
+                    type = MediaType.Anime
+                )
+            }
+        } catch (e: Exception) {
+            emptyList() // Mengembalikan daftar kosong jika terjadi kesalahan
+        }
+    }
+
+    override suspend fun fetchSearch(query: String): List<Media> {
+        return try {
+            val response = app.get("$mainUrl/search?q=$query")
+            val document = response.document
+
+            document.select("div.donghua-item").map { element ->
+                val title = element.select("h3.title").text().trim()
+                val link = element.select("a").attr("href")
+                val imageUrl = element.select("img").attr("src")
+
+                Media(
+                    title = title,
+                    link = link,
+                    imageUrl = imageUrl,
+                    type = MediaType.Anime
+                )
+            }
+        } catch (e: Exception) {
+            emptyList() // Mengembalikan daftar kosong jika terjadi kesalahan
+        }
+    }
+
+    override suspend fun fetchMediaDetails(link: String): MediaDetails {
+        return try {
+            val response = app.get(link)
+            val document = response.document
+
+            val title = document.select("h1.title").text().trim()
+            val description = document.select("div.description").text().trim()
+            val genres = document.select("div.genres a").map { it.text().trim() }
+            val episodes = document.select("div.episode-item").map { episodeElement ->
+                val episodeTitle = episodeElement.select("h3.episode-title").text().trim()
+                val episodeLink = episodeElement.select("a").attr("href")
+                val episodeDescription = episodeElement.select("div.episode-description").text().trim() // Ambil deskripsi episode jika ada
+                Episode(episodeTitle, episodeLink, episodeDescription)
+            }
+
+            MediaDetails(
+                title = title,
+                description = description,
+                genres = genres,
+                episodes = episodes
+            )
+        } catch (e: Exception) {
+            MediaDetails(
+                title = "Unknown",
+                description = "No description available.",
+                genres = emptyList(),
+                episodes = emptyList()
+            ) // Mengembalikan nilai default jika terjadi kesalahan
+        }
+    }
+
+    override suspend fun fetchEpisode(link: String): List<Stream> {
+        return try {
+            val response = app.get(link)
+            val document = response.document
+
+            // Mengambil daftar server dari halaman episode
+            val servers = document.select("div.server-item").map { serverElement ->
+                val serverName = serverElement.select("h3.server-name").text().trim()
+                val streamUrl = serverElement.select("video").attr("src") // Sesuaikan selector dengan elemen video
+                Stream(streamUrl, serverName, "Video")
+            }
+
+            servers.ifEmpty { listOf(Stream("No stream available", "Error", "Video")) } // Mengembalikan pesan jika tidak ada stream
+        } catch (e: Exception) {
+            emptyList() // Mengembalikan daftar kosong jika terjadi kesalahan
+        }
+    }
+
+    // Tambahan: Mengambil detail episode dengan informasi lebih lanjut
+    suspend fun fetchEpisodeDetails(link: String): EpisodeDetails {
+        return try {
+            val response = app.get(link)
+            val document = response.document
+
+            val title = document.select("h1.episode-title").text().trim()
+            val description = document.select("div.episode-description").text().trim()
+            val airDate = document.select("div.air-date").text().trim() // Ambil tanggal tayang jika ada
+
+            EpisodeDetails(
+                title = title,
+                description = description,
+                airDate = airDate
+            )
+        } catch (e: Exception) {
+            EpisodeDetails(
+                title = "Unknown",
+                description = "No description available.",
+                airDate = "Unknown"
+            ) // Mengembalikan nilai default jika terjadi kesalahan
+        }
+    }
+
+    // Tambahan: Menambahkan media ke daftar favorit
+    fun addToFavorites(media: Media) {
+        if (!favorites.contains(media)) {
+            favorites.add(media)
+        }
+    }
+
+    // Tambahan: Mengambil daftar favorit
+    fun getFavorites(): List<Media> {
+        return favorites
     }
 }
+
+// Data class untuk EpisodeDetails
+data class EpisodeDetails(
+    val title: String,
+    val description: String,
+    val airDate: String
+)
