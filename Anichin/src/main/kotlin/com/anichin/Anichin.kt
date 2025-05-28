@@ -4,6 +4,11 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.nicehttp.NiceResponse
 import org.jsoup.nodes.Element
+import com.lagradost.cloudstream3.Media
+import com.lagradost.cloudstream3.MediaType
+import com.lagradost.cloudstream3.MediaDetails
+import com.lagradost.cloudstream3.Stream
+import com.lagradost.cloudstream3.Episode
 
 class Anichin : MainAPI() {
     override var mainUrl = "https://anichin.club"
