@@ -1,0 +1,24 @@
+[
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=anichin.club&sz=%size%",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/mozzaru/IndoStream",
+        "fileSize": 9458,
+        "status": 1,
+        "language": "id",
+        "authors": [
+            "Hexated",
+            "TeKuma25"
+        ],
+        "tvTypes": [
+            "AnimeMovie",
+            "Anime",
+            "OVA",
+            "Donghua"
+        ],
+        "version": 1,
+        "internalName": "Anichin",
+        "url": "https://raw.githubusercontent.com/mozzaru/IndoStream/builds/Anichin.cs3",
+        "name": "Anichin"
+    }
+]
