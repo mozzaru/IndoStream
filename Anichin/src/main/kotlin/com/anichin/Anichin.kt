@@ -12,7 +12,7 @@ class Anichin : MainAPI() {
     override val hasMainPage = true
     override var lang = "id"
     override val hasDownloadSupport = true
-    override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie, TvType.OVA)
+    override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie, TvType.OVA, TvType.Donghua)
 
     override val mainPage = mainPageOf(
         "$mainUrl/page/" to "Terbaru"
@@ -44,14 +44,23 @@ class Anichin : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse {
         val doc = request(url).document
-        val title = doc.selectFirst("h1")?.text()?.replace("Subtitle Indonesia", "")?.trim() ?: ""
+        val title = doc.selectFirst("h1")?.text()
+            ?.replace("Subtitle Indonesia", "")?.trim() ?: ""
         val poster = doc.selectFirst("img.alignnone")?.attr("src")
+            ?: doc.selectFirst("figure img")?.attr("src")
         val description = doc.selectFirst(".entry-content > p")?.text()
-        val episodes = doc.select("ul.daftar li").map {
-            val link = it.select("a").attr("href")
-            val name = it.text()
-            val epNum = Regex("Episode\\s?(\\d+)").find(name)?.groupValues?.getOrNull(1)?.toIntOrNull()
-            Episode(link, episode = epNum)
+            ?: doc.select(".entry-content").text()
+
+        val episodes = doc.select("div.eplister ul li").mapNotNull {
+            val link = it.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+            val name = it.selectFirst(".epl-title")?.text() ?: it.text()
+            val epNum = Regex("Episode\\s?(\\d+)").find(name)
+                ?.groupValues?.getOrNull(1)?.toIntOrNull()
+
+            newEpisode(link) {
+                this.name = name
+                this.episode = epNum
+            }
         }.reversed()
 
         return newAnimeLoadResponse(title, url, TvType.Anime) {
@@ -68,7 +77,7 @@ class Anichin : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val doc = request(data).document
-        doc.select("iframe").map { iframe ->
+        doc.select("iframe").forEach { iframe ->
             val iframeUrl = iframe.attr("src")
             loadExtractor(iframeUrl, data, subtitleCallback, callback)
         }
